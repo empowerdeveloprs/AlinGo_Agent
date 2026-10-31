@@ -1,0 +1,23 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+instance/*.db
+instance/*.db-*
+uploads/*
+!uploads/.gitkeep
+
+# Local runtime data and secrets
+.env
+.env.*
+!.env.example
+.venv/
+__pycache__/
+*.py[cod]
+instance/*
+!instance/.gitkeep
+uploads/*
+!uploads/.gitkeep
+*.db
+*.sqlite
+*.sqlite3
