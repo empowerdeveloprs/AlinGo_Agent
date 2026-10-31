@@ -33,3 +33,26 @@ python create_admin.py
 - صرف پہلے سے منظور شدہ دائرے میں آڈٹ کریں۔
 - فائل کا مواد منتقل کرنے اور صرف metadata/hash پڑھنے کو الگ کارروائیاں سمجھیں۔
 - نوٹیفکیشن اطلاع ہے؛ یہ Android permissions کا متبادل نہیں۔
+
+---
+
+## Git اور GitHub کا مکمل طریقۂ کار
+
+اس پروجیکٹ کے سورس کوڈ کو محفوظ رکھنے، تبدیلیوں کی تاریخ برقرار رکھنے، مختلف ڈیوائسز پر کام جاری رکھنے اور GitHub کے ساتھ ہم آہنگی کے لیے Git استعمال کیا جاتا ہے۔
+
+### مکمل اردو گائیڈ
+[Git اور GitHub Workflow — تفصیلی وضاحت اور سات تصویری خاکے](docs/GIT-WORKFLOW-UR.md)
+
+### موضوعات
+- Working Directory اور Staging Area
+- Local Repository اور Remote Repository
+- `git add`، `git commit`، `git push` اور `git pull`
+- نئے کمپیوٹر یا موبائل پر `git clone`
+- متعدد Developers اور Collaborators
+- Private GitHub Repository کے ساتھ کام
+- Secrets، Database اور مقامی ڈیٹا کا تحفظ
+
+### تصویری رہنمائی
+تمام سات Git Workflow تصاویر یہاں موجود ہیں:
+
+`docs/images/git-workflow/`
