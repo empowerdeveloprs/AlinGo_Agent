@@ -1,4 +1,4 @@
-# Git اور GitHub Workflow — AlinGo Device Connect Modular Server
+# Git اور GitHub Workflow — Zentrix Device Connect Modular Server
 
 یہ گائیڈ Git کے روزمرہ استعمال، مقامی فائلوں، Staging Area، Local Repository اور GitHub کی Private Remote Repository کی وضاحت کرتی ہے۔ ساتھ سات تصویری خاکے بھی شامل ہیں۔
 
@@ -38,8 +38,8 @@ git pull --ff-only
 اگر پہلی بار نیا آلہ ہے تو:
 
 ```bash
-git clone git@github.com:empowerdeveloprs/AlinGo-Device-Connect-Modular-Server.git
-cd AlinGo-Device-Connect-Modular-Server
+git clone git@github.com:empowerdeveloprs/Zentrix.git
+cd Zentrix
 ```
 
 Private repository کے لیے اس آلے کی SSH key GitHub اکاؤنٹ میں مجاز ہونی چاہیے۔
@@ -81,7 +81,7 @@ Repository owner GitHub Settings میں قابل اعتماد افراد کو co
 
 ![دو developers کا workflow](images/git-workflow/07-two-developers.jpg)
 
-## 7۔ AlinGo پروجیکٹ کے حفاظتی اصول
+## 7۔ Zentrix پروجیکٹ کے حفاظتی اصول
 
 - اصل `.env`، passwords، tokens، private keys اور credentials commit نہ کریں۔
 - `instance/*.db` اور مقامی database فائلیں GitHub سے باہر رکھیں؛ ان کا الگ محفوظ backup رکھیں۔
@@ -101,7 +101,7 @@ Repository owner GitHub Settings میں قابل اعتماد افراد کو co
 
 اس گائیڈ کی تیاری کے وقت دستیاب گفتگو کے مطابق:
 
-- Repository: `empowerdeveloprs/AlinGo-Device-Connect-Modular-Server`
+- Repository: `empowerdeveloprs/Zentrix`
 - Visibility: Private
 - Branch: `main`
 - ابتدائی commit: `40bee4c`

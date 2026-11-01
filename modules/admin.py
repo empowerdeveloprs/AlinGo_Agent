@@ -64,6 +64,31 @@ def toggle_feature(name):
     if not db.execute("SELECT 1 FROM feature_flags WHERE name=?",(name,)).fetchone():
         return jsonify({"error":"unknown_feature"}), 404
     db.execute("UPDATE feature_flags SET enabled=? WHERE name=?",(int(data["enabled"]),name))
+
+    ended_sessions = 0
+    if name == "screen_viewer" and not data["enabled"]:
+        cur = db.execute(
+            """
+            UPDATE screen_viewer_sessions
+            SET status=CASE
+                    WHEN status='requested' THEN 'cancelled'
+                    WHEN status='approved' THEN 'ended'
+                END,
+                ended_at=CURRENT_TIMESTAMP,
+                end_reason='feature_disabled'
+            WHERE status IN ('requested','approved')
+            """
+        )
+        ended_sessions = cur.rowcount
+
     db.commit()
-    record("admin","feature_toggled",name,{"enabled":data["enabled"]})
+    record(
+        "admin",
+        "feature_toggled",
+        name,
+        {
+            "enabled": data["enabled"],
+            "ended_screen_viewer_sessions": ended_sessions,
+        },
+    )
     return jsonify({"name":name,"enabled":data["enabled"]})

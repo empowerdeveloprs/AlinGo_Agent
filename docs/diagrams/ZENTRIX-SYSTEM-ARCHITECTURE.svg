@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Zentrix Device Connect — System Architecture</title>
+  <desc id="desc">Admin and devices connect to a Flask server. The server uses authentication, feature controls, surveys, audit requests, candidate consent and file metadata modules backed by SQLite and audit events. Actual file transfer is incomplete.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#34495e"/>
+    </marker>
+    <style>
+      text { font-family: sans-serif; fill: #17202a; }
+      .heading { font-size: 27px; font-weight: bold; }
+      .subheading { font-size: 17px; font-weight: bold; }
+      .label { font-size: 14px; }
+      .small { font-size: 12px; }
+      .box { stroke: #34495e; stroke-width: 2; rx: 12; }
+      .line { stroke: #34495e; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .dashed { stroke: #a93226; stroke-width: 2; stroke-dasharray: 8 6; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="900" fill="#f7f9fb"/>
+  <text x="600" y="42" text-anchor="middle" class="heading">Zentrix Device Connect</text>
+  <text x="600" y="68" text-anchor="middle" class="label">System Architecture — موجودہ سرور کی ساخت</text>
+
+  <rect class="box" x="55" y="105" width="300" height="100" fill="#d6eaf8"/>
+  <text x="205" y="137" text-anchor="middle" class="subheading">Admin / Browser</text>
+  <text x="205" y="163" text-anchor="middle" class="label">Login • Dashboard • Controls</text>
+  <text x="205" y="184" text-anchor="middle" class="small">Admin session required</text>
+
+  <rect class="box" x="845" y="105" width="300" height="100" fill="#d5f5e3"/>
+  <text x="995" y="137" text-anchor="middle" class="subheading">Registered Device</text>
+  <text x="995" y="163" text-anchor="middle" class="label">Bearer token • Heartbeat</text>
+  <text x="995" y="184" text-anchor="middle" class="small">Enabled-device checks</text>
+
+  <rect class="box" x="320" y="245" width="560" height="100" fill="#fcf3cf"/>
+  <text x="600" y="278" text-anchor="middle" class="subheading">Flask Application Server</text>
+  <text x="600" y="304" text-anchor="middle" class="label">Registered Blueprints • Route handlers</text>
+  <text x="600" y="325" text-anchor="middle" class="small">Configuration • Request validation • Authorization</text>
+
+  <path class="line" d="M205 205 V225 H430 V245"/>
+  <path class="line" d="M995 205 V225 H770 V245"/>
+
+  <rect class="box" x="45" y="395" width="350" height="190" fill="#e8daef"/>
+  <text x="220" y="425" text-anchor="middle" class="subheading">Admin &amp; Consent Modules</text>
+  <text x="68" y="455" class="label">• Authentication / Dashboard</text>
+  <text x="68" y="480" class="label">• Devices / Feature Flags</text>
+  <text x="68" y="505" class="label">• Surveys / Candidate Links</text>
+  <text x="68" y="530" class="label">• Consent &amp; Permission Reports</text>
+  <text x="68" y="557" class="small">Browser permission reports are not proof</text>
+
+  <rect class="box" x="425" y="395" width="350" height="190" fill="#d6eaf8"/>
+  <text x="600" y="425" text-anchor="middle" class="subheading">Device API Modules</text>
+  <text x="448" y="455" class="label">• Device heartbeat</text>
+  <text x="448" y="480" class="label">• Pending audit requests / results</text>
+  <text x="448" y="505" class="label">• File metadata manifests</text>
+  <text x="448" y="530" class="label">• Token and feature checks</text>
+  <text x="448" y="557" class="small">Metadata is not file-content transfer</text>
+
+  <rect class="box" x="805" y="395" width="350" height="190" fill="#fadbd8"/>
+  <text x="980" y="425" text-anchor="middle" class="subheading">Transfer Status</text>
+  <text x="830" y="458" class="label">Metadata manifest: implemented</text>
+  <text x="830" y="486" class="label">Transfer request: implemented</text>
+  <text x="830" y="514" class="label">Actual file upload: incomplete</text>
+  <text x="830" y="542" class="label">Hash verification: not complete</text>
+  <text x="830" y="565" class="small">End-to-end transfer not implemented</text>
+
+  <path class="line" d="M470 345 V370 H220 V395"/>
+  <path class="line" d="M600 345 V395"/>
+  <path class="line" d="M730 345 V370 H980 V395"/>
+
+  <rect class="box" x="205" y="660" width="360" height="105" fill="#d5f5e3"/>
+  <text x="385" y="693" text-anchor="middle" class="subheading">SQLite Database</text>
+  <text x="385" y="719" text-anchor="middle" class="label">Admins • Devices • Surveys</text>
+  <text x="385" y="741" text-anchor="middle" class="label">Audit requests • Links • Manifests</text>
+
+  <rect class="box" x="635" y="660" width="360" height="105" fill="#e8daef"/>
+  <text x="815" y="693" text-anchor="middle" class="subheading">Audit Events</text>
+  <text x="815" y="719" text-anchor="middle" class="label">Security and application event records</text>
+  <text x="815" y="741" text-anchor="middle" class="small">Not necessarily tamper-proof</text>
+
+  <path class="line" d="M500 585 V625 H385 V660"/>
+  <path class="line" d="M700 585 V625 H815 V660"/>
+  <path class="line" d="M395 712 H635"/>
+
+  <rect x="100" y="800" width="1000" height="58" rx="8" fill="#ffffff" stroke="#a93226" stroke-width="2"/>
+  <text x="600" y="824" text-anchor="middle" class="subheading">Security Boundary / Implementation Limits</text>
+  <text x="600" y="845" text-anchor="middle" class="small">Production HTTPS, CSRF, rate limiting, deployment hardening and Android-client validation require separate verification.</text>
+
+  <text x="600" y="883" text-anchor="middle" class="small">Documentation diagram — verify against source code before deployment decisions.</text>
+</svg>

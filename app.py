@@ -8,7 +8,7 @@ def create_app(test_config=None):
     app = Flask(__name__)
     app.config.update(
         SECRET_KEY=os.getenv("FLASK_SECRET_KEY","unsafe-development-secret-change-me"),
-        DATABASE_PATH=os.getenv("DATABASE_PATH","instance/alingo_modular.db"),
+        DATABASE_PATH=os.getenv("DATABASE_PATH","instance/zentrix_modular.db"),
         DEVICE_OFFLINE_AFTER_SECONDS=90,
     )
     if test_config:
@@ -25,6 +25,7 @@ def create_app(test_config=None):
     from modules.candidate_links import bp as candidate_links_bp
     from modules.file_audit import bp as file_audit_bp
     from modules.device_file_audit import bp as device_file_audit_bp
+    from modules.screen_viewer import admin_bp as screen_viewer_admin_bp, device_bp as screen_viewer_device_bp
     app.register_blueprint(auth_bp)
     app.register_blueprint(devices_bp)
     app.register_blueprint(surveys_bp)
@@ -34,7 +35,11 @@ def create_app(test_config=None):
     app.register_blueprint(candidate_links_bp)
     app.register_blueprint(file_audit_bp)
     app.register_blueprint(device_file_audit_bp)
+
+    app.register_blueprint(screen_viewer_admin_bp)
+    app.register_blueprint(screen_viewer_device_bp)
+
     @app.get("/health")
     def health():
-        return jsonify({"status":"ok","app":"AlinGo Device Connect"})
+        return jsonify({"status":"ok","app":"Zentrix Device Connect"})
     return app

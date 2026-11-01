@@ -4,8 +4,8 @@ from .db import connect
 from .security import require_admin
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
-LOGIN_HTML = '''<!doctype html><meta charset="utf-8"><title>AlinGo Login</title>
-<h1>AlinGo Device Connect</h1>{% for m in get_flashed_messages() %}<p>{{m}}</p>{% endfor %}
+LOGIN_HTML = '''<!doctype html><meta charset="utf-8"><title>Zentrix Login</title>
+<h1>Zentrix Device Connect</h1>{% for m in get_flashed_messages() %}<p>{{m}}</p>{% endfor %}
 <form method="post"><label>Username <input name="username" required></label>
 <label>Password <input type="password" name="password" required></label><button>Login</button></form>'''
 

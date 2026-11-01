@@ -10,7 +10,7 @@ DASHBOARD_HTML = r"""
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AlinGo Device Connect</title>
+<title>Zentrix Device Connect</title>
 <style>
 :root{font-family:system-ui,sans-serif;color:#172033;background:#f3f6fb}
 *{box-sizing:border-box}
@@ -44,7 +44,7 @@ th,td{text-align:left;padding:10px;border-bottom:1px solid #e7ecf3;overflow-wrap
 </head>
 <body>
 <header>
-<h1>AlinGo Device Connect</h1>
+<h1>Zentrix Device Connect</h1>
 <p>Administrator dashboard · Device management</p>
 </header>
 <main>
@@ -231,4 +231,4 @@ def dashboard_summary():
         counts[table] = db.execute(
             f"SELECT COUNT(*) FROM {table}"
         ).fetchone()[0]
-    return {"app": "AlinGo Device Connect", "counts": counts}
+    return {"app": "Zentrix Device Connect", "counts": counts}

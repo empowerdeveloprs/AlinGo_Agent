@@ -1,4 +1,4 @@
-"""File-audit foundation for AlinGo Device Connect.
+"""File-audit foundation for Zentrix Device Connect.
 
 This module deliberately does not scan device storage or transfer file contents.
 File discovery and content transfer require explicit device-side consent.

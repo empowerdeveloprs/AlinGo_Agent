@@ -1,6 +1,6 @@
 # Backup and restore
 
-- موجودہ `alingo.db` کو overwrite نہ کریں۔
+- موجودہ `zentrix_modular.db` کو overwrite نہ کریں۔
 - backup سے پہلے app/server روکیں یا SQLite online backup API استعمال کریں۔
 - database backup کے ساتھ uploads، environment secret اور config manifest بھی محفوظ کریں۔
 - restore پہلے الگ test directory میں کریں۔

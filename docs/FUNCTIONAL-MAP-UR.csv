@@ -1,0 +1,29 @@
+ماڈیول,HTTP طریقہ,Route,مقصد,اجازت/تصدیق,موجودہ حیثیت
+Authentication,"GET, POST",/auth/login,ایڈمن لاگ اِن,ایڈمن اسناد,موجود؛ کوڈ سے مزید تصدیق درکار
+Authentication,GET,/auth/logout,ایڈمن لاگ آؤٹ,ایڈمن سیشن,موجود
+Dashboard,GET,/,ایڈمن ڈیش بورڈ,ایڈمن سیشن,موجود
+Dashboard,GET,/api/dashboard-summary,ڈیش بورڈ خلاصہ,کوڈ سے تصدیق درکار,موجود
+Devices,GET,/devices,ڈیوائسز کی فہرست,ایڈمن,موجود
+Devices,POST,/devices,ڈیوائس رجسٹریشن,ایڈمن,موجود
+Admin,POST,/admin/devices/<device_uid>/connection,ڈیوائس کنکشن فعال یا بند کرنا,ایڈمن,موجود
+Admin,GET,/admin/features,فیچر فلیگز دیکھنا,ایڈمن,موجود
+Admin,POST,/admin/features/<name>,فیچر فلیگ تبدیل کرنا,ایڈمن,موجود
+Surveys,GET,/api/v1/surveys,ڈیوائس کے لیے سروے فہرست,ڈیوائس ٹوکن,موجود
+Surveys,POST,/api/v1/surveys/<survey_id>/responses,سروے جواب جمع کرنا,ڈیوائس ٹوکن,موجود
+Surveys,"GET, POST",/api/v1/admin/surveys,ایڈمن سروے دیکھنا یا بنانا,ایڈمن,موجود
+Surveys,GET,/api/v1/admin/surveys/<survey_id>/responses,سروے جوابات دیکھنا,ایڈمن,موجود
+Audit Requests,POST,/api/v1/admin/audit-requests,آڈٹ درخواست بنانا,ایڈمن,موجود
+Audit Requests,POST,/api/v1/device/heartbeat,ڈیوائس heartbeat,ڈیوائس ٹوکن,موجود
+Audit Requests,GET,/api/v1/audit-requests/pending,زیرِ التوا آڈٹ درخواستیں,ڈیوائس ٹوکن,موجود
+Audit Requests,POST,/api/v1/audit-requests/<req_id>/result,آڈٹ نتیجہ جمع کرنا,ڈیوائس ٹوکن,موجود
+Candidate Links,POST,/candidate/admin/links,امیدوار لنک بنانا,ایڈمن,موجود
+Candidate Links,GET,/candidate/admin/links,امیدوار لنکس دیکھنا,ایڈمن,موجود
+Candidate Links,POST,/candidate/admin/links/<link_id>/revoke,لنک منسوخ کرنا,ایڈمن,موجود
+Candidate Links,GET,/candidate/<token>,امیدوار صفحہ,لنک ٹوکن,موجود
+Candidate Links,POST,/candidate/<token>/consent,رضامندی جمع کرنا,لنک ٹوکن,موجود
+Candidate Links,POST,/candidate/<token>/permissions,براؤزر اجازت رپورٹ,لنک ٹوکن,موجود؛ رپورٹ آزادانہ ثبوت نہیں
+Candidate Links,POST,/candidate/<token>/submit,امیدوار فارم جمع کرنا,لنک ٹوکن,موجود
+Device File Audit,POST,/api/v1/device/file-audit/manifests,فائلوں کا metadata manifest جمع کرنا,ڈیوائس ٹوکن اور فیچر فلیگ,موجود؛ حقیقی فائل مواد منتقل نہیں ہوتا
+File Audit,GET,/admin/file-audit/status,فائل آڈٹ کی حیثیت,ایڈمن,موجود
+File Audit,GET,/admin/file-audit/manifests,فائل metadata manifests دیکھنا,ایڈمن,موجود
+File Audit,POST,/admin/file-audit/transfers,ٹرانسفر درخواست بنانا,ایڈمن,درخواست موجود؛ مکمل فائل ٹرانسفر pipeline نامکمل

@@ -137,6 +137,24 @@ CREATE TABLE IF NOT EXISTS file_transfers (
 CREATE INDEX IF NOT EXISTS idx_file_transfers_device_status
  ON file_transfers(device_id, status, id);
 
+CREATE TABLE IF NOT EXISTS screen_viewer_sessions (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ device_id INTEGER NOT NULL REFERENCES devices(id),
+ requested_by TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'requested'
+   CHECK(status IN ('requested','approved','denied','ended','expired','cancelled')),
+ consent_version TEXT,
+ consented_at TEXT,
+ requested_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ expires_at TEXT NOT NULL,
+ ended_at TEXT,
+ end_reason TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_screen_viewer_device_status
+ ON screen_viewer_sessions(device_id, status, id);
+CREATE INDEX IF NOT EXISTS idx_screen_viewer_expiry
+ ON screen_viewer_sessions(status, expires_at);
+
 CREATE TABLE IF NOT EXISTS feature_flags (
  name TEXT PRIMARY KEY,
  enabled INTEGER NOT NULL DEFAULT 1
@@ -157,6 +175,11 @@ def init_db():
     db.executescript(SCHEMA)
     for name in ("surveys", "storage_audit", "content_audit", "file_transfer"):
         db.execute("INSERT OR IGNORE INTO feature_flags(name, enabled) VALUES(?,1)", (name,))
+
+    # Optional modules: disabled by default; existing settings remain unchanged.
+    for name in ("screen_viewer", "typing_diagnostics"):
+        db.execute("INSERT OR IGNORE INTO feature_flags(name, enabled) VALUES(?,0)", (name,))
+
     db.commit()
 
 def close_db(_error=None):

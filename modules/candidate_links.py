@@ -15,7 +15,7 @@ SOP_HTML = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AlinGo — معلومات اور رضامندی</title>
+<title>Zentrix — معلومات اور رضامندی</title>
 <style>
 body{font-family:system-ui,sans-serif;max-width:760px;margin:auto;padding:18px;line-height:1.8;color:#172033}
 section{border:1px solid #d7deea;border-radius:12px;padding:16px;margin:14px 0}
@@ -23,7 +23,7 @@ button{padding:12px 18px;border:0;border-radius:8px;background:#174a86;color:whi
 button:disabled{opacity:.5} .warn{color:#9a3412}
 </style></head>
 <body>
-<h1>AlinGo — سروے سے پہلے معلومات</h1>
+<h1>Zentrix — سروے سے پہلے معلومات</h1>
 <section>
 <h2>1۔ مقصد</h2>
 <p>یہ صفحہ امیدوار کو سروے کا طریقۂ کار اور معلومات کے استعمال سے آگاہ کرنے کے لیے ہے۔ سروے یا امداد کی منظوری اس صفحے سے ضمانت شدہ نہیں۔</p>
