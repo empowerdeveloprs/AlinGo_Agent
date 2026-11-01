@@ -6,8 +6,14 @@ from modules.db import init_db, close_db
 def create_app(test_config=None):
     load_dotenv()
     app = Flask(__name__)
+    secret_key = os.getenv("FLASK_SECRET_KEY")
+    if not secret_key and not test_config:
+        raise RuntimeError(
+            "FLASK_SECRET_KEY is required. Configure it in the environment or .env."
+        )
+
     app.config.update(
-        SECRET_KEY=os.getenv("FLASK_SECRET_KEY","unsafe-development-secret-change-me"),
+        SECRET_KEY=secret_key or "test-only-secret",
         DATABASE_PATH=os.getenv("DATABASE_PATH","instance/zentrix_modular.db"),
         DEVICE_OFFLINE_AFTER_SECONDS=90,
     )
