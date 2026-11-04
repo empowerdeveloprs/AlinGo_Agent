@@ -1,13 +1,9 @@
-from flask import Blueprint, render_template_string, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, make_response
 from werkzeug.security import check_password_hash
 from .db import connect
 from .security import require_admin
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
-LOGIN_HTML = '''<!doctype html><meta charset="utf-8"><title>Zentrix Login</title>
-<h1>Zentrix Device Connect</h1>{% for m in get_flashed_messages() %}<p>{{m}}</p>{% endfor %}
-<form method="post"><label>Username <input name="username" required></label>
-<label>Password <input type="password" name="password" required></label><button>Login</button></form>'''
 
 @bp.route("/login", methods=["GET","POST"])
 def login():
@@ -16,9 +12,13 @@ def login():
         if row and check_password_hash(row["password_hash"], request.form.get("password","")):
             session.clear()
             session["admin_username"] = row["username"]
+            if request.headers.get("HX-Request"):
+                resp = make_response("", 204)
+                resp.headers["HX-Redirect"] = url_for("dashboard")
+                return resp
             return redirect(url_for("dashboard"))
         flash("Login failed")
-    return render_template_string(LOGIN_HTML)
+    return render_template("login.html")
 
 @bp.get("/logout")
 def logout():

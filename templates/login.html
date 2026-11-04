@@ -1,0 +1,5 @@
+<!doctype html><meta charset="utf-8"><title>Zentrix Login</title>
+<h1>Zentrix Device Connect</h1>{% for m in get_flashed_messages() %}<p>{{m}}</p>{% endfor %}
+<form method="post" hx-post="/auth/login" hx-target="body" hx-swap="innerHTML"><label>Username <input name="username" required></label>
+<label>Password <input type="password" name="password" required></label><button>Login</button></form>
+<script src="{{ url_for('static', filename='vendor/htmx.min.js') }}" defer></script>
