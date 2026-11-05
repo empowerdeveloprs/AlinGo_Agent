@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Screen Viewer · Zentrix{% endblock %}
+{% block head %}
+<style>
+section{background:white;border:1px solid #e1e7f0;border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:1.15rem;margin-top:0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select,button{font:inherit;padding:8px 12px;border:1px solid #ccd5e3;border-radius:8px}
+button{cursor:pointer;background:#174a86;color:white;border:0}
+button.secondary{background:#52627a}
+button.danger{background:#b42318}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px;border-bottom:1px solid #e7ecf3;overflow-wrap:anywhere}
+.wrap{overflow-x:auto}
+.badge{font-weight:700}
+.requested{color:#174a86}.approved{color:#087a43}.denied{color:#b42318}.ended{color:#52627a}.expired{color:#b42318}.cancelled{color:#52627a}
+.note{color:#52627a;font-size:.9rem}
+#message{margin:12px 0;white-space:pre-wrap}
+</style>
+{% endblock %}
+{% block content %}
+<div id="message"></div>
+
+<section>
+<h2>Request a screen viewing session</h2>
+<form id="requestForm" class="row">
+<select name="device_uid" id="deviceSelect" required><option value="">— select device —</option></select>
+<input name="duration" type="number" min="30" max="3600" value="120" placeholder="Duration (seconds)">
+<button type="submit">Request session</button>
+</form>
+<p class="note">The device must explicitly approve this request on its side before streaming begins.</p>
+</section>
+
+<section>
+<div class="row" style="justify-content:space-between">
+<h2>All sessions</h2>
+<button id="refresh" class="secondary">Refresh</button>
+</div>
+<div class="wrap">
+<table>
+<thead><tr><th>ID</th><th>Device</th><th>Status</th><th>Requested</th><th>Expires</th><th>Action</th></tr></thead>
+<tbody id="sessions"><tr><td colspan="6">Loading…</td></tr></tbody>
+</table>
+</div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+function message(t){ $('message').textContent = t || ''; }
+async function api(path, options={}) {
+  const r = await fetch(path, {credentials:'same-origin', headers:{'Content-Type':'application/json',...(options.headers||{})}, ...options});
+  const t = r.headers.get('content-type')||'';
+  const d = t.includes('application/json') ? await r.json() : null;
+  if (r.redirected && r.url.includes('/auth/login')) { location.href='/auth/login'; throw new Error('login'); }
+  if (!r.ok) throw new Error((d && (d.error||d.message)) || ('HTTP '+r.status));
+  return d;
+}
+function cell(tr,v,cls=''){const td=document.createElement('td');td.textContent=v??'—';if(cls)td.className=cls;tr.appendChild(td);return td;}
+
+async function loadDevices(){
+  try{
+    const data = await api('/devices');
+    const sel = $('deviceSelect'); sel.replaceChildren();
+    const ph = document.createElement('option'); ph.value=''; ph.textContent='— select device —'; sel.appendChild(ph);
+    for(const d of data){
+      const opt = document.createElement('option'); opt.value = d.device_uid; opt.textContent = d.device_uid + (d.label?' · '+d.label:'');
+      sel.appendChild(opt);
+    }
+  }catch(e){ message('Devices error: '+e.message); }
+}
+
+async function loadSessions(){
+  try{
+    const data = await api('/admin/screen-viewer/sessions');
+    const rows = data.sessions || data || [];
+    const body = $('sessions'); body.replaceChildren();
+    if(!rows.length){ const tr=document.createElement('tr'); cell(tr,'No sessions yet.'); tr.firstChild.colSpan=6; body.appendChild(tr); return; }
+    for(const s of rows){
+      const tr = document.createElement('tr');
+      cell(tr, s.id); cell(tr, s.device_uid || s.device_id);
+      cell(tr, s.status, 'badge ' + s.status);
+      cell(tr, s.requested_at);
+      cell(tr, s.expires_at);
+      const td = document.createElement('td');
+      if(s.status === 'requested' || s.status === 'approved'){
+        const btn = document.createElement('button');
+        btn.textContent = 'Stop';
+        btn.className = 'danger';
+        btn.addEventListener('click', async()=>{
+          btn.disabled = true;
+          try{
+            await api('/admin/screen-viewer/sessions/'+s.id+'/stop',{method:'POST',body:JSON.stringify({})});
+            message('Session '+s.id+' stopped');
+            await loadSessions();
+          }catch(e){ message('Stop error: '+e.message); }
+          finally{ btn.disabled = false; }
+        });
+        td.appendChild(btn);
+      } else { td.textContent = '—'; }
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+  }catch(e){ message('Sessions error: '+e.message); }
+}
+
+$('requestForm').addEventListener('submit', async e=>{
+  e.preventDefault(); message('');
+  const f = new FormData(e.target);
+  try{
+    const duration = parseInt(f.get('duration'),10) || 120;
+    const data = await api('/admin/screen-viewer/sessions',{method:'POST',body:JSON.stringify({device_uid:String(f.get('device_uid')||'').trim(), duration_seconds:duration})});
+    message('Session #'+(data.session_id || data.id)+' created — waiting for device approval.');
+    await loadSessions();
+  }catch(err){ message('Request failed: '+err.message); }
+});
+
+$('refresh').addEventListener('click', loadSessions);
+loadDevices();
+loadSessions();
+setInterval(loadSessions, 10000);
+</script>
+{% endblock %}

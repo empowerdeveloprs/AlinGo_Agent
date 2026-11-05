@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, render_template
 
 from .db import connect
 from .security import require_admin, require_device_token
@@ -311,3 +311,8 @@ def device_stop_session(session_id):
         {"reason": "device_user_stopped"},
     )
     return jsonify({"session_id": session_id, "status": "ended"})
+
+@admin_bp.get("/page")
+@require_admin
+def page():
+    return render_template("screen_viewer.html")

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Candidate Links · Zentrix{% endblock %}
+{% block head %}
+<style>
+section{background:white;border:1px solid #e1e7f0;border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:1.15rem;margin-top:0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,button{font:inherit;padding:8px 12px;border:1px solid #ccd5e3;border-radius:8px}
+button{cursor:pointer;background:#174a86;color:white;border:0}
+button.secondary{background:#52627a}
+button.danger{background:#b42318}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px;border-bottom:1px solid #e7ecf3;overflow-wrap:anywhere}
+.wrap{overflow-x:auto}
+.note{color:#52627a;font-size:.9rem}
+#message{margin:12px 0;white-space:pre-wrap}
+#linkBox{display:none;background:#fff7db;padding:12px;border-radius:8px;overflow-wrap:anywhere}
+</style>
+{% endblock %}
+{% block content %}
+<div id="message"></div>
+
+<section>
+<h2>Create a candidate link</h2>
+<form id="linkForm" class="row">
+<input name="candidate_label" placeholder="Candidate label" required maxlength="160">
+<input name="valid_hours" type="number" min="1" max="720" value="24" placeholder="Valid hours">
+<button type="submit">Create link</button>
+</form>
+<p class="note">Link expires after the specified hours. The candidate must give consent before the survey opens.</p>
+<div id="linkBox">
+<strong>Public link — share this with the candidate</strong>
+<p id="linkText"></p>
+<button type="button" id="copyLink">Copy</button>
+<button type="button" class="secondary" id="hideLink">Hide</button>
+</div>
+</section>
+
+<section>
+<div class="row" style="justify-content:space-between">
+<h2>All candidate links</h2>
+<button id="refresh" class="secondary">Refresh</button>
+</div>
+<div class="wrap">
+<table>
+<thead><tr><th>ID</th><th>Label</th><th>Expires</th><th>Status</th><th>Created</th><th>Action</th></tr></thead>
+<tbody id="links"><tr><td colspan="6">Loading…</td></tr></tbody>
+</table>
+</div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+function message(t){ $('message').textContent = t || ''; }
+async function api(path, options={}) {
+  const r = await fetch(path, {credentials:'same-origin', headers:{'Content-Type':'application/json',...(options.headers||{})}, ...options});
+  const t = r.headers.get('content-type')||'';
+  const d = t.includes('application/json') ? await r.json() : null;
+  if (r.redirected && r.url.includes('/auth/login')) { location.href='/auth/login'; throw new Error('login'); }
+  if (!r.ok) throw new Error((d && (d.error||d.message)) || ('HTTP '+r.status));
+  return d;
+}
+function cell(tr,v,cls=''){const td=document.createElement('td');td.textContent=v??'—';if(cls)td.className=cls;tr.appendChild(td);return td;}
+
+async function loadLinks(){
+  try{
+    const data = await api('/candidate/admin/links');
+    const rows = Array.isArray(data) ? data : [];
+    const body = $('links'); body.replaceChildren();
+    if(!rows.length){ const tr=document.createElement('tr'); cell(tr,'No links yet.'); tr.firstChild.colSpan=6; body.appendChild(tr); return; }
+    for(const l of rows){
+      const tr = document.createElement('tr');
+      cell(tr, l.id); cell(tr, l.candidate_label);
+      cell(tr, l.expires_at);
+      cell(tr, l.revoked ? 'Revoked' : 'Active');
+      cell(tr, l.created_at);
+      const td = document.createElement('td');
+      if(!l.revoked){
+        const btn = document.createElement('button');
+        btn.textContent = 'Revoke'; btn.className = 'danger';
+        btn.addEventListener('click', async()=>{
+          if(!confirm('Revoke this link? Candidate will not be able to open it.')) return;
+          btn.disabled = true;
+          try{
+            await api('/candidate/admin/links/'+l.id+'/revoke',{method:'POST',body:JSON.stringify({})});
+            message('Link #'+l.id+' revoked');
+            await loadLinks();
+          }catch(e){ message('Revoke error: '+e.message); }
+          finally{ btn.disabled = false; }
+        });
+        td.appendChild(btn);
+      } else { td.textContent = '—'; }
+      tr.appendChild(td); body.appendChild(tr);
+    }
+  }catch(e){ message('Links error: '+e.message); }
+}
+
+$('linkForm').addEventListener('submit', async e=>{
+  e.preventDefault(); message('');
+  const f = new FormData(e.target);
+  const label = String(f.get('candidate_label')||'').trim();
+  const hours = parseInt(f.get('valid_hours'),10) || 24;
+  if(!label){ message('Label required'); return; }
+  try{
+    const data = await api('/candidate/admin/links',{method:'POST',body:JSON.stringify({candidate_label:label, valid_hours:hours})});
+    const token = data.token_once;
+    const url = location.origin + '/candidate/' + token;
+    $('linkText').textContent = url;
+    $('linkBox').style.display = 'block';
+    message('Link created. Copy and share.');
+    await loadLinks();
+  }catch(err){ message('Create failed: '+err.message); }
+});
+
+$('copyLink').addEventListener('click', async()=>{
+  try{ await navigator.clipboard.writeText($('linkText').textContent); message('Copied'); }
+  catch(e){ message('Copy failed'); }
+});
+$('hideLink').addEventListener('click', ()=>{ $('linkBox').style.display='none'; });
+$('refresh').addEventListener('click', loadLinks);
+loadLinks();
+</script>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}File Audit · Zentrix{% endblock %}
+{% block head %}
+<style>
+section{background:white;border:1px solid #e1e7f0;border-radius:12px;padding:16px;margin-bottom:16px}
+h2{font-size:1.15rem;margin-top:0}
+button{font:inherit;padding:8px 14px;border:1px solid #ccd5e3;border-radius:8px;cursor:pointer;background:#174a86;color:white;border:0}
+button.secondary{background:#52627a}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:10px;border-bottom:1px solid #e7ecf3;overflow-wrap:anywhere}
+.wrap{overflow-x:auto}
+.note{color:#52627a;font-size:.9rem}
+#message{margin:12px 0;white-space:pre-wrap}
+tr.clickable{cursor:pointer}
+tr.clickable:hover{background:#f3f6fb}
+</style>
+{% endblock %}
+{% block content %}
+<div id="message"></div>
+
+<section>
+<h2>Manifests (received file lists)</h2>
+<div class="wrap">
+<table>
+<thead><tr><th>ID</th><th>Device</th><th>Items</th><th>Size</th><th>Status</th><th>Received</th></tr></thead>
+<tbody id="manifests"><tr><td colspan="6">Loading…</td></tr></tbody>
+</table>
+</div>
+</section>
+
+<section id="itemsSection" style="display:none">
+<h2 id="itemsTitle">Items</h2>
+<div class="wrap">
+<table>
+<thead><tr><th>Name</th><th>Size</th><th>Type</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="items"></tbody>
+</table>
+</div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+function message(t){ $('message').textContent = t || ''; }
+async function api(path, options={}) {
+  const r = await fetch(path, {credentials:'same-origin', headers:{'Content-Type':'application/json',...(options.headers||{})}, ...options});
+  const t = r.headers.get('content-type')||'';
+  const d = t.includes('application/json') ? await r.json() : null;
+  if (r.redirected && r.url.includes('/auth/login')) { location.href='/auth/login'; throw new Error('login'); }
+  if (!r.ok) throw new Error((d && (d.error||d.message)) || ('HTTP '+r.status));
+  return d;
+}
+function cell(tr,v,cls=''){const td=document.createElement('td');td.textContent=v??'—';if(cls)td.className=cls;tr.appendChild(td);return td;}
+function fmtBytes(n){ if(n<1024)return n+' B'; if(n<1048576)return (n/1024).toFixed(1)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
+
+async function loadManifests(){
+  try{
+    const data = await api('/admin/file-audit/manifests?limit=100');
+    const rows = data.manifests || data || [];
+    const body = $('manifests'); body.replaceChildren();
+    if(!rows.length){ const tr=document.createElement('tr'); cell(tr,'No manifests yet. Devices must submit file audits first.'); tr.firstChild.colSpan=6; body.appendChild(tr); return; }
+    for(const m of rows){
+      const tr = document.createElement('tr'); tr.className='clickable';
+      cell(tr, m.id); cell(tr, m.device_uid || m.device_id);
+      cell(tr, m.item_count);
+      cell(tr, fmtBytes(m.total_size_bytes||0));
+      cell(tr, m.status);
+      cell(tr, m.received_at);
+      tr.addEventListener('click', ()=>loadItems(m));
+      body.appendChild(tr);
+    }
+  }catch(e){ message('Manifests error: '+e.message); }
+}
+async function loadItems(m){
+  try{
+    $('itemsTitle').textContent = 'Items for manifest #' + m.id + ' (' + (m.device_uid||m.device_id) + ')';
+    $('itemsSection').style.display = 'block';
+    const data = await api('/admin/file-audit/manifests');
+    let manifest = (data.manifests||data||[]).find(x=>x.id===m.id);
+    const items = (manifest && manifest.items) || [];
+    const body = $('items'); body.replaceChildren();
+    if(!items.length){ const tr=document.createElement('tr'); cell(tr,'No items in this manifest.'); tr.firstChild.colSpan=5; body.appendChild(tr); return; }
+    for(const it of items){
+      const tr = document.createElement('tr');
+      cell(tr, it.relative_name);
+      cell(tr, fmtBytes(it.size_bytes));
+      cell(tr, it.mime_type || '—');
+      cell(tr, it.transfer_status || '—');
+      const td = document.createElement('td');
+      if(it.transfer_status === 'metadata_only' || !it.transfer_status){
+        const btn = document.createElement('button');
+        btn.textContent = 'Request transfer';
+        btn.addEventListener('click', async()=>{
+          btn.disabled = true;
+          try{
+            await api('/admin/file-audit/transfers',{method:'POST',body:JSON.stringify({item_id:it.id})});
+            message('Transfer requested for '+it.relative_name);
+            await loadItems(m);
+          }catch(e){ message('Transfer error: '+e.message); }
+          finally{ btn.disabled = false; }
+        });
+        td.appendChild(btn);
+      } else if(it.transfer_status === 'complete'){
+        const a = document.createElement('a');
+        a.href = '/admin/file-audit/transfers/'+(it.transfer_id||'')+'/download';
+        a.textContent = 'Download';
+        td.appendChild(a);
+      } else {
+        td.textContent = it.transfer_status;
+      }
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+  }catch(e){ message('Items error: '+e.message); }
+}
+loadManifests();
+</script>
+{% endblock %}

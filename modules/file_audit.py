@@ -3,7 +3,7 @@
 This module deliberately does not scan device storage or transfer file contents.
 File discovery and content transfer require explicit device-side consent.
 """
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, render_template
 from .security import require_admin
 from .surveys import feature_enabled
 
@@ -233,3 +233,8 @@ def request_transfer():
         "expected_size_bytes": item["size_bytes"],
         "content_received": False,
     }), 201
+
+@bp.get("/page")
+@require_admin
+def page():
+    return render_template("file_audit.html")

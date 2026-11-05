@@ -1,5 +1,5 @@
 import json
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from .db import connect
 from .security import require_admin, require_device_token
 from .audit_log import record
@@ -59,3 +59,8 @@ def admin_surveys():
 def response_report(survey_id):
     rows = connect().execute("SELECT * FROM survey_responses WHERE survey_id=? ORDER BY id DESC",(survey_id,)).fetchall()
     return jsonify([dict(r) for r in rows])
+
+@bp.get("/page")
+@require_admin
+def page():
+    return render_template("surveys.html")

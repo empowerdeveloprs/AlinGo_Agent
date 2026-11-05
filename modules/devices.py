@@ -47,3 +47,9 @@ def create_device():
 def session_actor():
     from flask import session
     return session.get("admin_username","admin")
+
+@bp.get("/page")
+@require_admin
+def page():
+    from flask import render_template
+    return render_template("devices.html")

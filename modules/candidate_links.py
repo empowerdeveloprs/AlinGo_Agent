@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, request, jsonify, render_template_string
+from flask import Blueprint, request, jsonify, render_template, render_template_string
 from .db import connect
 from .security import require_admin, new_token, hash_token
 from .audit_log import record
@@ -247,3 +247,8 @@ def submit_survey(token):
         ), 200
     finally:
         db.close()
+
+@bp.get("/page")
+@require_admin
+def page():
+    return render_template("candidate_links.html")
