@@ -67,10 +67,9 @@ class HidHandler(private val context: Context) {
 
         val executor = Executor { it.run() }
 
-        // ✅ callback = null
         hidDevice?.registerApp(sdp, null, null, executor) {
             isRegistered = true
-            Log.i(TAG, "✅ HID registered")
+            Log.i(TAG, "HID registered")
             onReady(true)
         }
     }

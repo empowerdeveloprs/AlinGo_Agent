@@ -56,7 +56,7 @@ class AgentService : Service() {
             ?: UUID.randomUUID().toString()
 
         if (server.isEmpty()) {
-            Log.e(TAG, "❌ Server URL missing")
+            Log.e(TAG, "Server URL missing")
             stopSelf()
             return START_NOT_STICKY
         }
@@ -69,10 +69,10 @@ class AgentService : Service() {
         scope.launch {
             val success = wifi.register(deviceUid, token = agentToken)
             if (success) {
-                Log.i(TAG, "✅ Registered")
+                Log.i(TAG, "Registered")
                 startPolling()
             } else {
-                Log.e(TAG, "❌ Registration failed")
+                Log.e(TAG, "Registration failed")
             }
         }
 
@@ -90,12 +90,11 @@ class AgentService : Service() {
         scope.launch {
             while (isRunning) {
                 try {
-                    // ✅ Heartbeat
                     connectionManager.wifiClient.heartbeat(deviceUid)
 
                     val commands = connectionManager.wifiClient.pollCommands()
                     if (commands != null && commands.isNotEmpty()) {
-                        Log.i(TAG, "📥 ${commands.size} commands")
+                        Log.i(TAG, "Commands: ${commands.size}")
                         commands.forEach { cmd ->
                             scope.launch { executeCommand(cmd) }
                         }
@@ -116,7 +115,7 @@ class AgentService : Service() {
             } catch (e: Exception) { emptyMap() }
         } ?: emptyMap()
 
-        Log.i(TAG, "→ $type")
+        Log.i(TAG, "Command: $type")
 
         val result: Map<String, Any?> = try {
             when (type) {
@@ -141,7 +140,7 @@ class AgentService : Service() {
             "command_id" to cmdId,
             "result" to result
         ))
-        Log.i(TAG, "✅ $type → $mode")
+        Log.i(TAG, "$type -> $mode")
     }
 
     override fun onDestroy() {
