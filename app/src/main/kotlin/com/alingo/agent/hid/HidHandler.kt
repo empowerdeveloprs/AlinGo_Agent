@@ -67,11 +67,24 @@ class HidHandler(private val context: Context) {
 
         val executor = Executor { it.run() }
 
-        hidDevice?.registerApp(sdp, null, null, executor) {
-            isRegistered = true
-            Log.i(TAG, "HID registered")
-            onReady(true)
+        // ✅ FIX: proper BluetoothHidDevice.Callback object
+        val callback = object : BluetoothHidDevice.Callback() {
+            override fun onAppStatusChanged(pluggedDevice: BluetoothDevice?, registered: Boolean) {
+                super.onAppStatusChanged(pluggedDevice, registered)
+                if (registered) {
+                    isRegistered = true
+                    Log.i(TAG, "HID registered")
+                    onReady(true)
+                }
+            }
+
+            override fun onConnectionStateChanged(device: BluetoothDevice?, state: Int) {
+                super.onConnectionStateChanged(device, state)
+                Log.i(TAG, "HID connection: $state")
+            }
         }
+
+        hidDevice?.registerApp(sdp, null, null, executor, callback)
     }
 
     fun typeText(text: String) {
@@ -89,12 +102,26 @@ class HidHandler(private val context: Context) {
 
     private fun sendKey(keyCode: Int) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
-        val press = byteArrayOf(0, 0, keyCode.toByte(), 0, 0, 0, 0, 0)
-        val release = ByteArray(8)
-        hidDevice?.sendReport(0, press)
-        Thread.sleep(30)
-        hidDevice?.sendReport(0, release)
-        Thread.sleep(30)
+        val device = hidDevice ?: return
+
+        try {
+            val press = byteArrayOf(0, 0, keyCode.toByte(), 0, 0, 0, 0, 0)
+            val release = ByteArray(8)
+
+            // ✅ FIX: Use reflection for sendReport(int, byte[])
+            val method = BluetoothHidDevice::class.java.getMethod(
+                "sendReport",
+                Int::class.javaPrimitiveType,
+                ByteArray::class.java
+            )
+
+            method.invoke(device, 0, press)
+            Thread.sleep(30)
+            method.invoke(device, 0, release)
+            Thread.sleep(30)
+        } catch (e: Exception) {
+            Log.e(TAG, "sendKey: ${e.message}")
+        }
     }
 
     private fun charToHidKeyCode(char: Char): Int {
