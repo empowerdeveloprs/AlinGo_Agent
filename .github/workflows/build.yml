@@ -19,7 +19,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: Setup Android SDK (manual)
+      - name: Setup Android SDK
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
@@ -28,18 +28,13 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
       
-      - name: Delete existing wrapper (if broken)
-        run: |
-          rm -f gradlew
-          rm -f gradlew.bat
-          rm -f gradle/wrapper/gradle-wrapper.jar
-          rm -f gradle/wrapper/gradle-wrapper.properties
-      
       - name: Generate fresh Gradle wrapper
         run: |
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
-          ls -la gradlew gradle/wrapper/
+          echo "=== Wrapper files ==="
+          ls -la gradlew
+          ls -la gradle/wrapper/
       
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
