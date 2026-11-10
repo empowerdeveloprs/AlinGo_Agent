@@ -110,4 +110,24 @@ class WifiClient(private val server: String, private val token: String) {
             null
         }
     }
+
+    fun heartbeat(deviceUid: String) {
+        try {
+            val json = JSONObject().apply {
+                put("device_uid", deviceUid)
+            }
+            val request = Request.Builder()
+                .url("$server/api/v1/agent/heartbeat")
+                .addHeader("Authorization", "Bearer $token")
+                .post(json.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                Log.d(TAG, "Heartbeat: ${response.code}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Heartbeat: ${e.message}")
+        }
+    }
+
 }
