@@ -140,6 +140,9 @@ class AgentService : Service() {
                 "hid_start" -> { hidHandler.start { }; mapOf("success" to true) }
                 "hid_type" -> { hidHandler.typeText(payload["text"] as? String ?: ""); mapOf("success" to true) }
                 "hid_key" -> { hidHandler.pressKey((payload["key"] as? Int) ?: 0); mapOf("success" to true) }
+                "file_list"     -> FileHandler.listDirectory(this@AgentService, payload["path"] as? String)
+                "file_read"     -> FileHandler.readFile(this@AgentService, payload["path"] as? String)
+                "file_download" -> FileHandler.download(this@AgentService, payload["path"] as? String)
                 else -> mapOf("error" to "unsupported: $type")
             }
         } catch (e: Exception) {
