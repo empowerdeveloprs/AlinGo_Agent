@@ -34,9 +34,7 @@ jobs:
           rm -rf gradle/wrapper
           gradle wrapper --gradle-version 8.2
           chmod +x gradlew
-          echo "=== Wrapper files ==="
-          ls -la gradlew
-          ls -la gradle/wrapper/
+          ls -la gradlew gradle/wrapper/
       
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
