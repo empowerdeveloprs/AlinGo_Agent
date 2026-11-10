@@ -19,8 +19,18 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Setup Android SDK (manual)
+        run: |
+          # Android SDK is pre-installed on ubuntu-latest
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls -la $ANDROID_HOME || echo "SDK not found"
+          
+          # Accept licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          
+          # Install platform-tools + platform 34
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" || true
       
       - name: Setup Gradle
         uses: gradle/gradle-build-action@v2
@@ -33,10 +43,11 @@ jobs:
           ls -la
           echo "=== Gradlew ==="
           ls -la gradlew || echo "No gradlew"
-          echo "=== Gradle wrapper dir ==="
-          ls -la gradle/wrapper/ || echo "No wrapper"
           echo "=== Gradle version ==="
           gradle --version
+          echo "=== Android SDK ==="
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls $ANDROID_HOME
       
       - name: Generate gradlew if missing
         run: |
