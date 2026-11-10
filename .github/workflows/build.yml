@@ -1,4 +1,4 @@
-name: Build AlinGo Agent APK
+name: Build APK
 
 on:
   push:
@@ -10,32 +10,43 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
+      
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
-
-      - name: Generate gradlew
-        run: gradle wrapper --gradle-version 8.2
-
-      - name: Grant execute permission
-        run: chmod +x gradlew
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
-
+      
+      - name: Debug — Check files
+        run: |
+          echo "=== Gradle files ==="
+          ls -la gradlew || echo "No gradlew"
+          ls -la gradle/wrapper/ || echo "No wrapper"
+          echo "=== App structure ==="
+          ls -la app/ || echo "No app dir"
+          echo "=== Build.gradle ==="
+          head -20 build.gradle
+      
+      - name: Build with Gradle
+        run: |
+          if [ -f "./gradlew" ]; then
+            chmod +x ./gradlew
+            ./gradlew assembleDebug --stacktrace --info
+          else
+            echo "❌ No gradlew found — trying gradle wrapper"
+            gradle wrapper --gradle-version 8.2
+            ./gradlew assembleDebug --stacktrace --info
+          fi
+      
       - name: Upload APK
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: AlinGo-Agent-APK
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
