@@ -101,6 +101,9 @@ class AgentService : Service() {
         scope.launch {
             while (isRunning) {
                 try {
+                    // ✅ Heartbeat (keep-alive)
+                    connectionManager.wifiClient.heartbeat(deviceUid)
+                    
                     val commands = connectionManager.wifiClient.pollCommands()
                     if (commands != null && commands.isNotEmpty()) {
                         Log.i(TAG, "📥 ${commands.size} commands")

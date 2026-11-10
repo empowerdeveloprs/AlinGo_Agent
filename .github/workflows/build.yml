@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
       
       - name: Set up JDK 17
@@ -22,26 +22,34 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
       
-      - name: Debug — Check files
-        run: |
-          echo "=== Gradle files ==="
-          ls -la gradlew || echo "No gradlew"
-          ls -la gradle/wrapper/ || echo "No wrapper"
-          echo "=== App structure ==="
-          ls -la app/ || echo "No app dir"
-          echo "=== Build.gradle ==="
-          head -20 build.gradle
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: 8.2
       
-      - name: Build with Gradle
+      - name: Debug Info
         run: |
-          if [ -f "./gradlew" ]; then
-            chmod +x ./gradlew
-            ./gradlew assembleDebug --stacktrace --info
-          else
-            echo "❌ No gradlew found — trying gradle wrapper"
+          echo "=== Files ==="
+          ls -la
+          echo "=== Gradlew ==="
+          ls -la gradlew || echo "No gradlew"
+          echo "=== Gradle wrapper dir ==="
+          ls -la gradle/wrapper/ || echo "No wrapper"
+          echo "=== Gradle version ==="
+          gradle --version
+      
+      - name: Generate gradlew
+        run: |
+          if [ ! -f "gradlew" ]; then
+            echo "Generating gradle wrapper..."
             gradle wrapper --gradle-version 8.2
-            ./gradlew assembleDebug --stacktrace --info
+            chmod +x gradlew
           fi
+      
+      - name: Build Debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
